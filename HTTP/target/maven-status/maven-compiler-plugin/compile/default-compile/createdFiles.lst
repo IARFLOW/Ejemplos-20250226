@@ -1,0 +1,3 @@
+com\mycompany\http\SimpleHTTPServer.class
+com\mycompany\http\ClientHandler.class
+com\mycompany\http\TCPClient.class
