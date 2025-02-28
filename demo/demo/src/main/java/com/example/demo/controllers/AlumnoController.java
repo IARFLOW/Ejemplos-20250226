@@ -1,67 +1,79 @@
-
 package com.example.demo.controllers;
 
 import com.example.demo.models.Alumno;
+import com.example.demo.repositories.AlumnoRepository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/alumnos")
-
 public class AlumnoController {
     
-    private List<Alumno> alumnos = new ArrayList<>();
-
-    public AlumnoController() {
-        alumnos.add(new Alumno(1, "Juan", 20));
-        alumnos.add(new Alumno(2, "María", 22));
-        alumnos.add(new Alumno(3, "Juan2", 23));
-        alumnos.add(new Alumno(4, "Juan3", 24));
-        alumnos.add(new Alumno(5, "Juan4", 25));
-        alumnos.add(new Alumno(6, "Juan5", 26));
+    @Autowired
+    private AlumnoRepository alumnoRepository;
+    
+    // Constructor para inicializar datos de ejemplo si no hay datos
+    public AlumnoController(AlumnoRepository alumnoRepository) {
+        this.alumnoRepository = alumnoRepository;
+        
+        // Solo agregar datos iniciales si la tabla está vacía
+        if (alumnoRepository.count() == 0) {
+            alumnoRepository.save(new Alumno(0, "Juan", 20));
+            alumnoRepository.save(new Alumno(0, "María", 22));
+            alumnoRepository.save(new Alumno(0, "Pedro", 21));
+            alumnoRepository.save(new Alumno(0, "Ana", 19));
+            alumnoRepository.save(new Alumno(0, "Carlos", 23));
+        }
     }
     
-    //hace GET en el protocolo HTTP: devuelve el array.
+    // GET - Obtener todos los alumnos
     @GetMapping
     public List<Alumno> getAlumnos() {
-        return alumnos;
+        return alumnoRepository.findAll();
     }
     
-    //hace GET con un id fijo
+    // GET - Obtener un alumno por ID
     @GetMapping("/{id}")
-    public Alumno getAlumno(@PathVariable int id) {
-        return alumnos.stream()
-                .filter(alumno -> alumno.getId() == id)
-                .findFirst()
-                .orElse(null);
+    public ResponseEntity<Alumno> getAlumno(@PathVariable int id) {
+        Optional<Alumno> alumno = alumnoRepository.findById(id);
+        return alumno.map(ResponseEntity::ok)
+                .orElseGet(() -> ResponseEntity.notFound().build());
     }
     
-    @PostMapping //Nuevo alumno en el array
-    public Alumno addAlumno(@RequestBody Alumno alumno) {
-        alumno.setId(alumnos.size() + 1);
-        alumnos.add(alumno);
-        return alumno;
+    // POST - Crear un nuevo alumno
+    @PostMapping
+    public ResponseEntity<Alumno> addAlumno(@RequestBody Alumno alumno) {
+        // Asegurar que estamos creando un nuevo alumno
+        alumno.setId(0);
+        Alumno savedAlumno = alumnoRepository.save(alumno);
+        return new ResponseEntity<>(savedAlumno, HttpStatus.CREATED);
     }
     
-    @PutMapping("/{id}") //PUT para modificar un alumno existente:
-    public Alumno updateAlumno(@PathVariable int id, @RequestBody Alumno nuevoAlumno) {
-        for (Alumno alumno : alumnos) {
-            if (alumno.getId() == id) {
-                alumno.setNombre(nuevoAlumno.getNombre());
-                alumno.setEdad(nuevoAlumno.getEdad());
-                return alumno;
-            }
+    // PUT - Actualizar un alumno existente
+    @PutMapping("/{id}")
+    public ResponseEntity<Alumno> updateAlumno(@PathVariable int id, @RequestBody Alumno alumno) {
+        if (!alumnoRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
         }
-        return null;
+        
+        alumno.setId(id);
+        Alumno updatedAlumno = alumnoRepository.save(alumno);
+        return ResponseEntity.ok(updatedAlumno);
     }
     
-    // Eliminar un alumno
+    // DELETE - Eliminar un alumno
     @DeleteMapping("/{id}")
-    public String deleteAlumno(@PathVariable int id) {
-        alumnos.removeIf(alumno -> alumno.getId() == id);
-        return "Alumno eliminado";
+    public ResponseEntity<String> deleteAlumno(@PathVariable int id) {
+        if (!alumnoRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        alumnoRepository.deleteById(id);
+        return ResponseEntity.ok("Alumno eliminado con éxito");
     }
-    
 }
